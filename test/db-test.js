@@ -3,6 +3,7 @@
 const test = require('ava')
 const uuid = require('uuid-base62')
 const r = require('rethinkdb')
+const utils = require('../lib/utils')
 const Db = require('../')
 const fixtures = require('./fixtures')
 
@@ -81,4 +82,21 @@ test('list all images', async t => {
   let result = await db.getImages()
 
   t.is(created.length, result.length)
+})
+
+test('save user', async t => {
+  let db = t.context.db
+
+  t.is(typeof db.saveUser, 'function', 'saveUser is a function')
+
+  let user = fixtures.getUser()
+  let plainPassword = user.password
+  let created = await db.saveUser(user)
+
+  t.is(user.username, created.username)
+  t.is(user.email, created.email)
+  t.is(user.name, created.name)
+  t.is(utils.encrypt(plainPassword), created.password)
+  t.is(typeof user.id, 'string')
+  t.truthy(created.createdAt)
 })
