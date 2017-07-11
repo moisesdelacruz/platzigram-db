@@ -40,9 +40,9 @@ test('save image', async t => {
   t.is(created.likes, image.likes)
   t.is(created.liked, image.liked)
   t.deepEqual(created.tags, [ 'awesome', 'tags', 'platzi' ])
-  t.is(created.user_id, image.user_id)
+  t.is(created.userId, image.userId)
   t.is(typeof created.id, 'string')
-  t.is(created.public_id, uuid.encode(created.id))
+  t.is(created.publicId, uuid.encode(created.id))
   t.truthy(created.createdAt)
 })
 
@@ -53,7 +53,7 @@ test('likes image', async t => {
 
   let image = fixtures.getImage()
   let created = await db.saveImage(image)
-  let result = await db.likeImage(created.public_id)
+  let result = await db.likeImage(created.publicId)
 
   t.true(result.liked)
   t.is(result.likes, image.likes + 1)
@@ -66,9 +66,11 @@ test('get image', async t => {
 
   let image = fixtures.getImage()
   let created = await db.saveImage(image)
-  let result = await db.getImage(created.public_id)
+  let result = await db.getImage(created.publicId)
 
   t.deepEqual(created, result)
+
+  await t.throws(db.getImage('foo'), /not found/)
 })
 
 test('list all images', async t => {
@@ -111,6 +113,8 @@ test('get user', async t => {
   let result = await db.getUser(user.username)
 
   t.deepEqual(created, result)
+
+  await t.throws(db.getUser('foo'), /not found/)
 })
 
 test('authenticate user', async t => {
@@ -127,4 +131,31 @@ test('authenticate user', async t => {
 
   let fail = await db.authenticate(user.username, 'foo')
   t.false(fail)
+
+  let failure = await db.authenticate('foo', 'bar')
+  t.false(failure)
+})
+
+test('list images by user', async t => {
+  let db = t.context.db
+
+  t.is(typeof db.getImagesByUser, 'function', 'getImagesByUser is a function')
+
+  let images = fixtures.getImages(10)
+  let userId = uuid.uuid()
+  let random = Math.round(Math.random() * images.length)
+
+  let saveImages = []
+  for (let i = 0; i < images.length; i++) {
+    if (i < random) {
+      images[i].userId = userId
+    }
+
+    saveImages.push(db.saveImage(images[i]))
+  }
+
+  await Promise.all(saveImages)
+
+  let result = await db.getImagesByUser(userId)
+  t.is(result.length, random)
 })
